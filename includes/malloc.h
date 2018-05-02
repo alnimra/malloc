@@ -10,11 +10,11 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#ifndef _RTV1_H
-# define _RTV1_H
+#ifndef _MALLOC_H
+# define _MALLOC_H
 # include "libft.h"
-# include <math.h>
 # include <unistd.h>
+#include <sys/mman.h>
 # define TINY 16
 # define SMALL 512
 # define LARGE 4000
@@ -25,19 +25,24 @@ void free(void *ptr);
 void *malloc(size_t size);
 void *realloc(void *ptr, size_t size);
 
-typedef struct s_mlist
+typedef struct	s_mlist
 {
-	void	*ptr_start;
-	int		length;
-	int		status;
+	void			*ptr_start;
+	int				length;
+	int				status;
+	struct s_mlist	*page_start;
+	struct s_mlist	*next;
 }				t_mlist;
 
-typedef struct s_hippocampus
+typedef struct	s_hippocampus
 {
-	int		is_hippocampus_created;
-	t_mlist *tiny;
-	t_mlist *small;
-	t_mlist *large;
+	int		page_size;
+	t_mlist *tiny_head;
+	t_mlist *tiny_last;
+	t_mlist *small_head;
+	t_mlist *small_last;
+	t_mlist *large_head;
+	t_mlist *large_last;
 }				t_hippocampus;
 
 t_hippocampus *true_hippocampus;
