@@ -162,7 +162,26 @@ void *find_cached_space(t_mlist *list_head, int size)
 	}
 	return NULL;
 }
-
+void replace_last_elem_if_found_elem_is_last_elem(int	  mem_size,
+												  t_mlist *found_elem,
+												  t_mlist *replace_elem)
+{
+	if (mem_size == TINY)
+	{
+		if (found_elem == true_hippocampus->tiny_last)
+			true_hippocampus->tiny_last = replace_elem;
+	}
+	else if (mem_size == SMALL)
+	{
+		if (found_elem == true_hippocampus->small_last)
+			true_hippocampus->small_last = replace_elem;
+	}
+	else
+	{
+		if (found_elem == true_hippocampus->large_last)
+			true_hippocampus->large_last = replace_elem;
+	}
+}
 void *get_and_manage_cached_space(int size, int mem_size,
 								  t_mlist **found_elem_for_cache)
 {
@@ -178,6 +197,8 @@ void *get_and_manage_cached_space(int size, int mem_size,
 		found_elem_for_cache, (*found_elem_for_cache)->ptr_start + size,
 		store_found_elem_for_cache_org_size - size - sizeof(t_mlist),
 		STATUS_FREE);
+	replace_last_elem_if_found_elem_is_last_elem(
+		mem_size, *found_elem_for_cache, (*found_elem_for_cache)->next);
 	if ((*found_elem_for_cache)->page_start == NULL)
 		(*found_elem_for_cache)->next->page_start = *found_elem_for_cache;
 	else
@@ -268,7 +289,7 @@ int main()
 	print_hippocampus();
 	printf("MALLOCING!\n");
 	int i = -1;
-	while (++i < 52)
+	while (++i < 54)
 	{
 		hello = (char)malloc(16);
 		print_hippocampus();
