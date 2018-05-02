@@ -3,8 +3,8 @@
 
 void print_mlist_elem(t_mlist *elem)
 {
-	printf("ptr_start: %p | length %d | status %d | page_start %p | next %p\n",
-		elem->ptr_start, elem->length, elem->status, elem->page_start,
+	printf("elem_addr: %p | ptr_start: %p | length %d | status %d | page_start %p | next %p\n",
+		elem, elem->ptr_start, elem->length, elem->status, elem->page_start,
 		elem->next);
 }
 void print_mlist(t_mlist *list_head)
