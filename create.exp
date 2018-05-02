@@ -1,0 +1,9 @@
+#!/usr/bin/expect -f
+set filename [lindex $argv 0];
+spawn vim $filename
+send ":Stdheader\r"
+send "i"
+send "#include \"libft.h\""
+send "\x1b"
+send ":x\r"
+interact
