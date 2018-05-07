@@ -14,16 +14,19 @@
 # define _MALLOC_H
 # include "libft.h"
 # include <unistd.h>
-#include <sys/mman.h>
-# define TINY 16
-# define SMALL 512
-# define LARGE 4000
+# include <sys/mman.h>
+# include <stdint.h>
+# include <inttypes.h>
+# define TINY 128
+# define SMALL 1024
+# define LARGE 1025
 # define STATUS_FREE 0
 # define STATUS_INUSE 1
 
 void free(void *ptr);
 void *malloc(size_t size);
 void *realloc(void *ptr, size_t size);
+void show_alloc_mem();
 
 typedef struct	s_mlist
 {

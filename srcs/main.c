@@ -63,10 +63,11 @@ int find_mem_size(int size)
 	return LARGE;
 }
 
-void set_new_size_for_cache_allocations(int *size)
+size_t get_new_size_for_cache_allocations(int size)
 {
-	if (*size <= SMALL)
-		*size *= 100;
+	if (size <= SMALL)
+		size *= 100;
+	return size;
 }
 
 void add_to_end_of_mlist(t_mlist **last, void *ptr_start, int length,
@@ -97,9 +98,8 @@ void *allocate_inefficient(int mem_size, int size)
 	void *   ptr_start_of_cache_left;
 	int		 length_of_cache_left;
 
-	set_new_size_for_cache_allocations(&size);
 	size_of_mmap_alloc = calc_size_as_multiple_of_page_size(
-		size + (2 * sizeof(t_mlist)) + TINY + sizeof(t_mlist),
+		(get_new_size_for_cache_allocations(size)) + (2 * sizeof(t_mlist)) + TINY + sizeof(t_mlist),
 		true_hippocampus->page_size);
 	allocated_ptr = mmap(0, size_of_mmap_alloc, PROT_READ | PROT_WRITE,
 						 MAP_ANON | MAP_PRIVATE, -1, 0);
@@ -351,14 +351,15 @@ void if_unmap_possible_then_do(t_mlist *found_ptr,
 		page_start_elem_prev->next = iter;
 	else
 	{
-		if(head_type_for_search == true_hippocampus->tiny_head)
+		if (head_type_for_search == true_hippocampus->tiny_head)
 			true_hippocampus->tiny_head = iter;
-		if(head_type_for_search == true_hippocampus->small_head)
+		if (head_type_for_search == true_hippocampus->small_head)
 			true_hippocampus->small_head = iter;
-		if(head_type_for_search == true_hippocampus->large_head)
+		if (head_type_for_search == true_hippocampus->large_head)
 			true_hippocampus->large_head = iter;
 	}
-	printf("Head Type for search: %p | Size of UNMAP: %d\n", head_type_for_search, size);
+	printf("Head Type for search: %p | Size of UNMAP: %d\n",
+		   head_type_for_search, size);
 	printf("MEMUNMAPING");
 	munmap(found_ptr->page_start->ptr_start, size);
 }
@@ -374,6 +375,111 @@ void free(void *ptr)
 	if_unmap_possible_then_do(found_ptr, head_type_for_search,
 							  page_start_elem_for_munmap_search);
 }
+
+t_mlist *get_ptr(void *ptr)
+{
+	t_mlist *iter;
+	int		 i;
+
+	i = 0;
+	while (i < 3)
+	{
+		if (i == 0)
+			iter = true_hippocampus->tiny_head;
+		else if (i == 1)
+			iter = true_hippocampus->small_head;
+		else
+			iter = true_hippocampus->large_head;
+		while (iter)
+		{
+			if (iter->ptr_start == ptr)
+				return iter;
+			iter = iter->next;
+		}
+		i++;
+	}
+	return NULL;
+}
+void *realloc(void *ptr, size_t size)
+{
+	t_mlist *old_ptr_list_elem;
+	t_mlist *ret;
+
+	if (size == 0)
+	{
+		free(ptr);
+		return NULL;
+	}
+	else if (!ptr)
+		return malloc(size);
+	else
+	{
+		old_ptr_list_elem = get_ptr(ptr);
+		if (old_ptr_list_elem == NULL)
+			return malloc(size);
+		else if ((size_t)old_ptr_list_elem->length >= size)
+			return ptr;
+		ret = malloc(size);
+		if (ret)
+		{
+			ft_memcpy(ret, ptr, size);
+			free(ptr);
+		}
+		return ret;
+	}
+	return NULL;
+}
+
+void show_alloc_mem_seg(t_mlist *iter, size_t *total_size)
+{
+	printf("%p - %p : %d bytes\n", iter->ptr_start,
+		   iter->ptr_start + iter->length, iter->length);
+	*total_size += iter->length;
+}
+
+void show_alloc_mem_mlist(t_mlist *list_head, size_t *total_size)
+{
+	t_mlist *iter;
+
+	iter = list_head;
+	while (iter)
+	{
+		if (iter->status == STATUS_INUSE)
+			show_alloc_mem_seg(iter, total_size);
+		iter = iter->next;
+	}
+}
+void show_alloc_mem()
+{
+	size_t total_size;
+
+	total_size = 0;
+	printf("TINY: ");
+	if (true_hippocampus->tiny_head == NULL)
+		printf("Nothing allocated.\n");
+	else
+	{
+		printf("%p\n", true_hippocampus->tiny_head->ptr_start);
+		show_alloc_mem_mlist(true_hippocampus->tiny_head, &total_size);
+	}
+	printf("SMALL: ");
+	if (true_hippocampus->small_head == NULL)
+		printf("Nothing allocated.\n");
+	else
+	{
+		printf("%p\n", true_hippocampus->small_head->ptr_start);
+		show_alloc_mem_mlist(true_hippocampus->small_head, &total_size);
+	}
+	printf("LARGE: ");
+	if (true_hippocampus->large_head == NULL)
+		printf("Nothing allocated.\n");
+	else
+	{
+		printf("%p\n", true_hippocampus->large_head->ptr_start);
+		show_alloc_mem_mlist(true_hippocampus->large_head, &total_size);
+	}
+	printf("Total : %lu bytes\n", total_size);
+}
 int main(void)
 {
 	void *hello = malloc(18);
@@ -381,14 +487,33 @@ int main(void)
 	printf("Size of t_hippocampus: %d\n", (int)sizeof(t_hippocampus));
 	print_hippocampus();
 	int i = -1;
-		free(hello);
+	free(hello);
+	print_hippocampus();
 	while (++i < 2)
 	{
 		hello = malloc(16);
 		print_hippocampus();
-		print_hippocampus();
 	}
-		free(hello);
-		print_hippocampus();
+	free(hello);
+	print_hippocampus();
+	char *sample = (char *)malloc(sizeof(char) * (5 + 1));
+	sample[5] = '\0';
+	sample[0] = 's';
+	sample[1] = 'a';
+	sample[2] = 'm';
+	sample[3] = 'p';
+	sample[4] = 'l';
+
+	printf("Sample = %s\n", sample);
+	print_hippocampus();
+	char *sample2 = (char *)realloc(sample, sizeof(char) * (6 + 1));
+	sample2[5] = '-';
+	sample2[6] = '\0';
+	printf("Sample2 = %s\n", sample2);
+	char *malloc1 = (char *)malloc(129);
+	char *malloc2 = (char*)malloc(10000);
+	malloc1[0] = '\0';
+	malloc2[0] = '\0';
+	show_alloc_mem();
 	// printf("%c", hello);
 }
